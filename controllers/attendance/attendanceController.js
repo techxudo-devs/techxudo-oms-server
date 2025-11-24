@@ -41,7 +41,9 @@ export const checkIn = async (req, res) => {
     // Validate QR code if provided
     if (method === "qr") {
       if (!qrCode) {
-        return res.status(400).json({ message: "QR code is required for QR check-in" });
+        return res
+          .status(400)
+          .json({ message: "QR code is required for QR check-in" });
       }
 
       const qrValidation = await qrService.validateQRCode(qrCode);
@@ -59,7 +61,10 @@ export const checkIn = async (req, res) => {
     const checkInTime = new Date();
 
     // Calculate late status
-    const lateStatus = await attendanceService.calculateLateStatus(checkInTime, userId);
+    const lateStatus = await attendanceService.calculateLateStatus(
+      checkInTime,
+      userId
+    );
 
     // Create attendance record
     const attendance = await Attendance.create({
@@ -72,30 +77,31 @@ export const checkIn = async (req, res) => {
         deviceInfo,
         qrCode: method === "qr" ? qrCode : undefined,
         location: location || {},
-        notes: notes || ""
+        notes: notes || "",
       },
       status: lateStatus.isLate ? "late" : "present",
       lateArrival: {
         isLate: lateStatus.isLate,
-        minutesLate: lateStatus.minutesLate
-      }
+        minutesLate: lateStatus.minutesLate,
+      },
     });
 
-    const populatedAttendance = await Attendance.findById(attendance._id).populate(
-      "userId",
-      "fullName designation email"
-    );
+    const populatedAttendance = await Attendance.findById(
+      attendance._id
+    ).populate("userId", "fullName designation email");
 
     // Send late arrival notification email if late
     if (lateStatus.isLate && populatedAttendance.userId) {
-      emailService.sendLateArrivalNotification(
-        populatedAttendance.userId,
-        checkInTime,
-        lateStatus.minutesLate
-      ).catch(err => {
-        console.error("Failed to send late arrival email:", err);
-        // Don't fail the check-in if email fails
-      });
+      emailService
+        .sendLateArrivalNotification(
+          populatedAttendance.userId,
+          checkInTime,
+          lateStatus.minutesLate
+        )
+        .catch((err) => {
+          console.error("Failed to send late arrival email:", err);
+          // Don't fail the check-in if email fails
+        });
     }
 
     res.status(201).json({
@@ -104,7 +110,7 @@ export const checkIn = async (req, res) => {
         : "Checked in successfully",
       attendance: populatedAttendance,
       isLate: lateStatus.isLate,
-      minutesLate: lateStatus.minutesLate
+      minutesLate: lateStatus.minutesLate,
     });
   } catch (error) {
     console.error("Error in checkIn:", error);
@@ -130,7 +136,9 @@ export const checkOut = async (req, res) => {
     // Validate QR code if provided
     if (method === "qr") {
       if (!qrCode) {
-        return res.status(400).json({ message: "QR code is required for QR check-out" });
+        return res
+          .status(400)
+          .json({ message: "QR code is required for QR check-out" });
       }
 
       const qrValidation = await qrService.validateQRCode(qrCode);
@@ -152,7 +160,7 @@ export const checkOut = async (req, res) => {
       deviceInfo,
       qrCode: method === "qr" ? qrCode : undefined,
       location: location || {},
-      notes: notes || ""
+      notes: notes || "",
     };
 
     // Calculate hours worked
@@ -160,15 +168,14 @@ export const checkOut = async (req, res) => {
 
     await attendance.save();
 
-    const populatedAttendance = await Attendance.findById(attendance._id).populate(
-      "userId",
-      "fullName designation email"
-    );
+    const populatedAttendance = await Attendance.findById(
+      attendance._id
+    ).populate("userId", "fullName designation email");
 
     res.json({
       message: "Checked out successfully",
       attendance: populatedAttendance,
-      hoursWorked: attendance.hoursWorked
+      hoursWorked: attendance.hoursWorked,
     });
   } catch (error) {
     console.error("Error in checkOut:", error);
@@ -206,7 +213,7 @@ export const getMyAttendance = async (req, res) => {
     if (startDate && endDate) {
       query.date = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate),
       };
     }
 
@@ -230,8 +237,8 @@ export const getMyAttendance = async (req, res) => {
         total,
         page: parseInt(page),
         limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit))
-      }
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
     });
   } catch (error) {
     console.error("Error in getMyAttendance:", error);
@@ -277,16 +284,21 @@ export const requestCorrection = async (req, res) => {
       requestedCheckOut,
       reason,
       attachments,
-      attendanceId
+      attendanceId,
     } = req.body;
 
     if (!requestType || !requestedDate || !reason) {
       return res.status(400).json({
-        message: "Request type, date, and reason are required"
+        message: "Request type, date, and reason are required",
       });
     }
 
-    const validTypes = ["forgot-checkin", "forgot-checkout", "correction", "late-approval"];
+    const validTypes = [
+      "forgot-checkin",
+      "forgot-checkout",
+      "correction",
+      "late-approval",
+    ];
     if (!validTypes.includes(requestType)) {
       return res.status(400).json({ message: "Invalid request type" });
     }
@@ -296,20 +308,23 @@ export const requestCorrection = async (req, res) => {
       attendanceId,
       requestType,
       requestedDate: new Date(requestedDate),
-      requestedCheckIn: requestedCheckIn ? new Date(requestedCheckIn) : undefined,
-      requestedCheckOut: requestedCheckOut ? new Date(requestedCheckOut) : undefined,
+      requestedCheckIn: requestedCheckIn
+        ? new Date(requestedCheckIn)
+        : undefined,
+      requestedCheckOut: requestedCheckOut
+        ? new Date(requestedCheckOut)
+        : undefined,
       reason,
-      attachments: attachments || []
+      attachments: attachments || [],
     });
 
-    const populatedRequest = await AttendanceRequest.findById(correctionRequest._id).populate(
-      "userId",
-      "fullName designation email"
-    );
+    const populatedRequest = await AttendanceRequest.findById(
+      correctionRequest._id
+    ).populate("userId", "fullName designation email");
 
     res.status(201).json({
       message: "Correction request submitted successfully",
-      request: populatedRequest
+      request: populatedRequest,
     });
   } catch (error) {
     console.error("Error in requestCorrection:", error);

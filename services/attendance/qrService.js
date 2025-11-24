@@ -19,9 +19,14 @@ class QRService {
       const expiryMinutes = settings.qrCode.expiryMinutes || 5;
 
       // Generate hash for security
-      const secret = settings.qrCode.secret || process.env.QR_SECRET || "default-secret-key";
+      const secret =
+        settings.qrCode.secret || process.env.QR_SECRET || "default-secret-key";
       const dataToHash = `${officeCode}|${timestamp}|${secret}`;
-      const hash = crypto.createHash("sha256").update(dataToHash).digest("hex").substring(0, 16);
+      const hash = crypto
+        .createHash("sha256")
+        .update(dataToHash)
+        .digest("hex")
+        .substring(0, 16);
 
       // QR Code data format
       const qrData = `${officeCode}|${timestamp}|${hash}`;
@@ -29,7 +34,7 @@ class QRService {
       return {
         qrData,
         expiresAt: new Date(timestamp + expiryMinutes * 60 * 1000),
-        expiryMinutes
+        expiryMinutes,
       };
     } catch (error) {
       throw error;
@@ -60,7 +65,8 @@ class QRService {
       const [scannedOfficeCode, scannedTimestamp, scannedHash] = parts;
 
       // Validate office code
-      const expectedOfficeCode = settings.qrCode.officeCode || "TECHXUDO-OFFICE";
+      const expectedOfficeCode =
+        settings.qrCode.officeCode || "TECHXUDO-OFFICE";
       if (scannedOfficeCode !== expectedOfficeCode) {
         return { valid: false, message: "Invalid office QR code" };
       }
@@ -76,9 +82,14 @@ class QRService {
       }
 
       // Validate hash
-      const secret = settings.qrCode.secret || process.env.QR_SECRET || "default-secret-key";
+      const secret =
+        settings.qrCode.secret || process.env.QR_SECRET || "default-secret-key";
       const dataToHash = `${scannedOfficeCode}|${scannedTimestamp}|${secret}`;
-      const expectedHash = crypto.createHash("sha256").update(dataToHash).digest("hex").substring(0, 16);
+      const expectedHash = crypto
+        .createHash("sha256")
+        .update(dataToHash)
+        .digest("hex")
+        .substring(0, 16);
 
       if (scannedHash !== expectedHash) {
         return { valid: false, message: "Invalid QR code signature" };
