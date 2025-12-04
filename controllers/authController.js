@@ -1,4 +1,6 @@
+import User from "../models/User.js";
 import AuthService from "../services/auth/authService.js";
+import bcrypt from "bcryptjs";
 
 // @desc    Login user
 // @route   POST /api/auth/login
@@ -95,7 +97,7 @@ const updateProfile = async (req, res) => {
       phone,
       address,
       emergencyContact,
-      profile
+      profile,
     });
 
     return res.status(200).json(result);
@@ -181,6 +183,73 @@ const logout = async (req, res) => {
     });
   }
 };
+const verifySetPasswordToken = async (req, res) => {
+  try {
+    // Find user by token logic here
+    const user = await User.findOne({
+      setPasswordToken: req.params.token,
+      setPasswordExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "Invalid or expired token",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Set password
+const setPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    const user = await User.findOne({
+      setPasswordToken: req.params.token,
+      setPasswordExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "Invalid or expired token",
+      });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    user.setPasswordToken = undefined;
+    user.setPasswordExpiry = undefined;
+    user.isActive = true;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password set successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
 
 export {
   login,
@@ -190,4 +259,6 @@ export {
   forgotPassword,
   resetPassword,
   logout,
+  setPassword,
+  verifySetPasswordToken,
 };

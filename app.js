@@ -15,7 +15,9 @@ import requestRoutes from "./routes/requestRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import salaryRoutes from "./routes/salaryRoutes.js";
 import organizationRoutes from "./routes/organizationRoutes.js";
-
+import employmentRoutes from "./routes/employmentRoutes.js";
+import appointmentRoutes from "./routes/appointmentRoutes.js";
+import contractRoutes from "./routes/contractRoutes.js";
 const app = express();
 
 // Security middleware
@@ -61,6 +63,9 @@ app.use("/api/requests", requestRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/salary", salaryRoutes);
 app.use("/api/organization", organizationRoutes);
+app.use("/api/employment-forms", employmentRoutes);
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/contracts", contractRoutes);
 
 // Error handling middleware
 app.use(notFound);

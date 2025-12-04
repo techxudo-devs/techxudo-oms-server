@@ -1,4 +1,4 @@
-import EmploymentFormService from "../services/employement/employementFormService";
+import EmploymentFormService from "../services/employement/employementFormService.js";
 /**
  * @desc    Create employment form (Admin only)
  * @route   POST /api/employment-forms
@@ -17,7 +17,8 @@ export const createEmploymentForm = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Employment form created successfully",
-      data: result,
+      data: result.form,
+      token: result.token, // Include the unhashed token for frontend use
     });
   } catch (error) {
     console.error("Create employment form error:", error);
@@ -146,6 +147,46 @@ export const reviewEmploymentForm = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || "Server error while reviewing employment form",
+    });
+  }
+};
+
+/**
+ * @desc    Get employment form by token (Public - for employee view)
+ * @route   GET /api/employment-forms/view/:token
+ * @access  Public (with token)
+ */
+export const getEmploymentFormByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Find employment form by token using the static method
+    const result = await EmploymentFormService.getEmploymentFormByToken(token);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        error: "Employment form not found",
+      });
+    }
+
+    // Check if token is expired
+    if (result.isTokenExpired()) {
+      return res.status(410).json({
+        success: false,
+        error: "This employment form link has expired",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get employment form by token error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Server error while fetching employment form",
     });
   }
 };

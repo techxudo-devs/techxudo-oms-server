@@ -1,6 +1,6 @@
-import AppointmentLetter from "../models/AppointmentLetter.js";
+import AppointmentLetter from "../models/employement/AppointmentLetter.js";
 import crypto from "crypto";
-import { sendEmail } from "../services/email/emailService.js";
+import emailService from "../services/email/emailService.js";
 import { generateAppointmentLetterTemplate } from "../emails/appointment-letter-template.js";
 
 /**
@@ -16,8 +16,8 @@ class AppointmentLetterService {
   async sendAppointmentLetter(appointmentLetterData) {
     try {
       // Generate a unique token for this appointment letter
-      const token = crypto.randomBytes(32).toString('hex');
-      
+      const token = crypto.randomBytes(32).toString("hex");
+
       // Prepare the appointment letter data
       const newAppointmentLetterData = {
         ...appointmentLetterData,
@@ -36,7 +36,7 @@ class AppointmentLetterService {
         `${process.env.CLIENT_URL}/onboarding/appointment/${token}`
       );
 
-      await sendEmail({
+      await emailService.sendEmail({
         to: appointmentLetter.employeeEmail,
         subject: appointmentLetter.letterContent.subject,
         html: emailTemplate,
@@ -61,7 +61,10 @@ class AppointmentLetterService {
       const skip = (page - 1) * limit;
 
       const [appointmentLetters, total] = await Promise.all([
-        AppointmentLetter.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        AppointmentLetter.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
         AppointmentLetter.countDocuments(filter),
       ]);
 
@@ -101,7 +104,9 @@ class AppointmentLetterService {
     try {
       return await AppointmentLetter.findOne({ token });
     } catch (error) {
-      throw new Error(`Error fetching appointment letter by token: ${error.message}`);
+      throw new Error(
+        `Error fetching appointment letter by token: ${error.message}`
+      );
     }
   }
 
@@ -114,14 +119,16 @@ class AppointmentLetterService {
     try {
       return await AppointmentLetter.findOneAndUpdate(
         { token },
-        { 
-          status: 'viewed',
-          viewedAt: new Date()
+        {
+          status: "viewed",
+          viewedAt: new Date(),
         },
         { new: true }
       );
     } catch (error) {
-      throw new Error(`Error marking appointment letter as viewed: ${error.message}`);
+      throw new Error(
+        `Error marking appointment letter as viewed: ${error.message}`
+      );
     }
   }
 
@@ -135,7 +142,7 @@ class AppointmentLetterService {
   async respondToAppointmentLetter(token, action, reason) {
     try {
       const updateData = {
-        status: action === 'accept' ? 'accepted' : 'rejected',
+        status: action === "accept" ? "accepted" : "rejected",
         respondedAt: new Date(),
       };
 
@@ -154,14 +161,16 @@ class AppointmentLetterService {
       }
 
       // If accepted, potentially trigger the next step in onboarding
-      if (action === 'accept') {
+      if (action === "accept") {
         // Future: Create employment form for this employee
         // This would typically trigger the next step in the onboarding flow
       }
 
       return appointmentLetter;
     } catch (error) {
-      throw new Error(`Error responding to appointment letter: ${error.message}`);
+      throw new Error(
+        `Error responding to appointment letter: ${error.message}`
+      );
     }
   }
 
@@ -173,8 +182,8 @@ class AppointmentLetterService {
    */
   async updateAppointmentLetterStatus(appointmentLetterId, status) {
     try {
-      const validStatuses = ['sent', 'viewed', 'accepted', 'rejected'];
-      
+      const validStatuses = ["sent", "viewed", "accepted", "rejected"];
+
       if (!validStatuses.includes(status)) {
         throw new Error(`Invalid status: ${status}`);
       }
@@ -185,7 +194,9 @@ class AppointmentLetterService {
         { new: true }
       );
     } catch (error) {
-      throw new Error(`Error updating appointment letter status: ${error.message}`);
+      throw new Error(
+        `Error updating appointment letter status: ${error.message}`
+      );
     }
   }
 }

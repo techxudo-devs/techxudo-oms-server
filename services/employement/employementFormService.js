@@ -1,10 +1,13 @@
-import EmploymentForm from "../../models/employement/EmploymentForm";
-
+import EmploymentForm from "../../models/employement/EmploymentForm.js";
 class EmploymentFormService {
   static async createEmploymentForm(employmentFormData) {
     try {
       const newForm = await EmploymentForm.create(employmentFormData);
-      return newForm;
+      // Generate token after creation
+      const token = newForm.generateToken();
+      await newForm.save();
+      // Return both the form and the unhashed token
+      return { form: newForm, token };
     } catch (error) {
       console.error("Service Error (createEmploymentForm):", error);
       throw new Error("Failed to create employment form.");
@@ -44,6 +47,16 @@ class EmploymentFormService {
       }
       console.error("Service Error (getEmploymentFormById):", error);
       throw new Error("Failed to fetch employment form by ID.");
+    }
+  }
+
+  static async getEmploymentFormByToken(token) {
+    try {
+      const form = await EmploymentForm.findByToken(token);
+      return form;
+    } catch (error) {
+      console.error("Service Error (getEmploymentFormByToken):", error);
+      throw new Error("Failed to fetch employment form by token.");
     }
   }
 

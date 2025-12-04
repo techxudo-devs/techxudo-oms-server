@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 const employmentFormSchema = new mongoose.Schema(
   {
@@ -17,6 +18,14 @@ const employmentFormSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    // Token for public access
+    token: {
+      type: String,
+      unique: true,
+    },
+    tokenExpiry: {
+      type: Date,
     },
 
     personalInfo: {
@@ -108,5 +117,24 @@ const employmentFormSchema = new mongoose.Schema(
 // Indexes
 employmentFormSchema.index({ organizationId: 1, status: 1 });
 employmentFormSchema.index({ employeeEmail: 1, organizationId: 1 });
+
+// Generate unique employment form token
+employmentFormSchema.methods.generateToken = function () {
+  const token = crypto.randomBytes(32).toString("hex");
+  this.token = crypto.createHash("sha256").update(token).digest("hex");
+  this.tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  return token;
+};
+
+// Check if token is expired
+employmentFormSchema.methods.isTokenExpired = function () {
+  return this.tokenExpiry < new Date();
+};
+
+// Static method to find by unhashed token
+employmentFormSchema.statics.findByToken = async function (token) {
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  return this.findOne({ token: hashedToken });
+};
 
 export default mongoose.model("EmploymentForm", employmentFormSchema);
