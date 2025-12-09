@@ -26,7 +26,7 @@ class AuthService {
         organizationSlug: options.organizationSlug,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "15m" } // Short-lived access token
+      { expiresIn: "1d" } // Increased to 1 day to prevent session timeout during long forms
     );
   }
 

@@ -1,6 +1,7 @@
 import AppointmentLetter from "../models/employement/AppointmentLetter.js";
 import crypto from "crypto";
 import emailService from "../services/email/emailService.js";
+import eventService from "../services/eventService.js";
 import { generateAppointmentLetterTemplate } from "../emails/appointment-letter-template.js";
 
 /**
@@ -33,7 +34,7 @@ class AppointmentLetterService {
       const emailTemplate = generateAppointmentLetterTemplate(
         appointmentLetter.employeeName,
         appointmentLetter.letterContent,
-        `${process.env.CLIENT_URL}/onboarding/appointment/${token}`
+        `${process.env.FRONTEND_URL || "http://localhost:4080"}/onboarding/appointment/${token}`
       );
 
       await emailService.sendEmail({
@@ -117,14 +118,17 @@ class AppointmentLetterService {
    */
   async markAsViewed(token) {
     try {
-      return await AppointmentLetter.findOneAndUpdate(
-        { token },
-        {
-          status: "viewed",
-          viewedAt: new Date(),
-        },
-        { new: true }
-      );
+      const appointment = await AppointmentLetter.findOne({ token });
+      if (!appointment) return null;
+
+      // Only mark as viewed if it hasn't been responded to
+      if (appointment.status === "sent") {
+        appointment.status = "viewed";
+        appointment.viewedAt = new Date();
+        return await appointment.save();
+      }
+
+      return appointment;
     } catch (error) {
       throw new Error(
         `Error marking appointment letter as viewed: ${error.message}`
@@ -160,10 +164,9 @@ class AppointmentLetterService {
         return null;
       }
 
-      // If accepted, potentially trigger the next step in onboarding
+      // If accepted, trigger the next step in onboarding via event
       if (action === "accept") {
-        // Future: Create employment form for this employee
-        // This would typically trigger the next step in the onboarding flow
+        eventService.emit("appointment.accepted", { appointmentLetter });
       }
 
       return appointmentLetter;

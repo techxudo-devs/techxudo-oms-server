@@ -16,7 +16,7 @@ const employeeContractSchema = new mongoose.Schema(
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false, // Optional - employee user is created after contract is signed
     },
 
     contractDetails: {
@@ -121,6 +121,12 @@ const employeeContractSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    signingToken: {
+      type: String,
+      index: true,
+    },
+    tokenExpiry: Date,
   },
   {
     timestamps: true,

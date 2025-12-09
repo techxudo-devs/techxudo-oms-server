@@ -60,7 +60,15 @@ const appointmentLetterSchema = new mongoose.Schema(
     sentAt: Date,
     viewedAt: Date,
     respondedAt: Date,
+    respondedAt: Date,
     response: String, // Reason for rejection if applicable
+
+    token: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

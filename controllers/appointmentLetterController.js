@@ -9,7 +9,6 @@ export const sendAppointmentLetter = async (req, res) => {
   try {
     const appointmentLetterData = req.body;
 
-    // Add organizationId and createdBy from request
     appointmentLetterData.organizationId = req.user.organizationId;
     appointmentLetterData.createdBy = req.user._id;
 

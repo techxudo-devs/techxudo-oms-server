@@ -23,6 +23,7 @@ const employmentFormSchema = new mongoose.Schema(
     token: {
       type: String,
       unique: true,
+      index: true,
     },
     tokenExpiry: {
       type: Date,
@@ -32,7 +33,9 @@ const employmentFormSchema = new mongoose.Schema(
       photo: String,
       legalName: {
         type: String,
-        required: true,
+        required: function () {
+          return this.status === "submitted";
+        },
       },
       fatherName: String,
       guardianName: String,
@@ -45,7 +48,9 @@ const employmentFormSchema = new mongoose.Schema(
     cnicInfo: {
       cnicNumber: {
         type: String,
-        required: true,
+        required: function () {
+          return this.status === "submitted";
+        },
       },
       cnicFrontImage: String,
       cnicBackImage: String,
@@ -56,12 +61,14 @@ const employmentFormSchema = new mongoose.Schema(
     contactInfo: {
       phone: {
         type: String,
-        required: true,
+        required: function () {
+          return this.status === "submitted";
+        },
       },
       alternatePhone: String,
       email: {
         type: String,
-        required: true,
+        required: true, // Email is always required for identification
       },
       emergencyContact: {
         name: String,
@@ -95,7 +102,7 @@ const employmentFormSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "submitted", "approved", "rejected"],
+      enum: ["draft", "pending_review", "approved", "rejected"],
       default: "draft",
       index: true,
     },
@@ -114,26 +121,25 @@ const employmentFormSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
 employmentFormSchema.index({ organizationId: 1, status: 1 });
 employmentFormSchema.index({ employeeEmail: 1, organizationId: 1 });
 
-// Generate unique employment form token
 employmentFormSchema.methods.generateToken = function () {
-  const token = crypto.randomBytes(32).toString("hex");
-  this.token = crypto.createHash("sha256").update(token).digest("hex");
+  const unhashedToken = crypto.randomBytes(32).toString("hex");
+  this.token = crypto.createHash("sha256").update(unhashedToken).digest("hex");
   this.tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-  return token;
+  return unhashedToken;
 };
 
-// Check if token is expired
 employmentFormSchema.methods.isTokenExpired = function () {
   return this.tokenExpiry < new Date();
 };
 
-// Static method to find by unhashed token
-employmentFormSchema.statics.findByToken = async function (token) {
-  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+employmentFormSchema.statics.findByToken = async function (unhashedToken) {
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(unhashedToken)
+    .digest("hex");
   return this.findOne({ token: hashedToken });
 };
 

@@ -9,6 +9,8 @@ import DocumentDeclinedEmail from "../../emails/DocumentDeclinedEmail.js";
 import StatusUpdateEmail from "../../emails/StatusUpdateEmail.js";
 import LateArrivalEmail from "../../emails/LateArrivalEmail.js";
 import AbsentNotificationEmail from "../../emails/AbsentNotificationEmail.js";
+import EmploymentFormEmail from "../../emails/EmploymentFormEmail.js";
+import ContractEmail from "../../emails/ContractEmail.js";
 /**
  * Email Service - Handles all email-related business logic
  */
@@ -710,6 +712,139 @@ Techxudo Office Management System
     } catch (error) {
       console.error("Error sending absent notification:", error);
       return { success: false };
+    }
+  }
+  /**
+   * Send employment form email using React Email
+   * @param {Object} employee - Employee details
+   * @param {string} token - Form token
+   * @returns {Promise<Object>} Email send result
+   */
+  async sendEmploymentFormEmail(employee, token) {
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const formLink = `${frontendUrl}/employment/form/${token}`;
+
+      // Render React component to HTML
+      const html = await render(
+        React.createElement(EmploymentFormEmail, {
+          employeeName: employee.fullName,
+          formLink,
+        })
+      );
+
+      // Generate plain text version
+      const text = `
+Dear ${employee.fullName},
+
+To proceed with your onboarding at Techxudo, we need you to complete your employment information form.
+
+Please visit: ${formLink}
+
+This link will expire in 7 days.
+
+Best regards,
+Techxudo Team
+      `.trim();
+
+      await this.sendEmail({
+        to: employee.email,
+        subject: "Action Required: Complete Your Employment Form",
+        html,
+        text,
+      });
+
+      console.log(`📧 Employment form email sent to ${employee.email}`);
+      return {
+        success: true,
+        message: `Employment form email sent to ${employee.email}`,
+      };
+    } catch (error) {
+      console.error("Error sending employment form email:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send contract email using React Email
+   * @param {Object} contractData - Contract details
+   * @param {string} token - Signing token
+   * @returns {Promise<Object>} Email send result
+   */
+  async sendContractEmail(contractData, token) {
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const signingLink = `${frontendUrl}/employment/contract/${token}`;
+
+      // Format start date
+      const startDate = contractData.contractDetails?.startDate
+        ? new Date(contractData.contractDetails.startDate).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          )
+        : "TBD";
+
+      // Render React component to HTML
+      const html = await render(
+        React.createElement(ContractEmail, {
+          employeeName: contractData.employeeName,
+          position: contractData.contractDetails?.position || "N/A",
+          department: contractData.contractDetails?.department || "N/A",
+          startDate,
+          baseSalary:
+            contractData.contractDetails?.compensation?.baseSalary || 0,
+          signingLink,
+        })
+      );
+
+      // Generate plain text version
+      const formattedSalary = new Intl.NumberFormat("en-PK", {
+        style: "currency",
+        currency: "PKR",
+        minimumFractionDigits: 0,
+      }).format(contractData.contractDetails?.compensation?.baseSalary || 0);
+
+      const text = `
+Dear ${contractData.employeeName},
+
+Congratulations! Your employment contract is now ready for your review and signature.
+
+Contract Details:
+- Position: ${contractData.contractDetails?.position || "N/A"}
+- Department: ${contractData.contractDetails?.department || "N/A"}
+- Start Date: ${startDate}
+- Base Salary: ${formattedSalary} per month
+
+To review and sign your contract, please visit:
+${signingLink}
+
+⚠️ Important: This signing link will expire in 7 days.
+
+If you have any questions, please contact our HR department.
+
+Best regards,
+The Techxudo Team
+      `.trim();
+
+      await this.sendEmail({
+        to: contractData.employeeEmail,
+        subject: "📄 Your Employment Contract is Ready for Signing",
+        html,
+        text,
+      });
+
+      console.log(`📧 Contract email sent to ${contractData.employeeEmail}`);
+      return {
+        success: true,
+        message: `Contract email sent to ${contractData.employeeEmail}`,
+      };
+    } catch (error) {
+      console.error("Error sending contract email:", error);
+      throw error;
     }
   }
 }

@@ -198,19 +198,40 @@ export const getEmploymentFormByToken = async (req, res) => {
  */
 export const submitEmploymentForm = async (req, res) => {
   try {
+    const { token } = req.params;
     const employmentFormData = req.body;
 
+    console.log(
+      "DEBUG: Submit request received for token (first 10 chars):",
+      token?.substring(0, 10)
+    );
+
+    // Validate token parameter
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: "Token is required",
+      });
+    }
+
     const result = await EmploymentFormService.submitEmploymentForm(
-      req.params.token,
+      token,
       employmentFormData
     );
 
     if (!result) {
+      console.error(
+        "Controller: Employment form not found for token (first 10 chars):",
+        token.substring(0, 10)
+      );
       return res.status(404).json({
         success: false,
-        error: "Employment form not found",
+        error:
+          "Employment form not found or link is invalid. Please check your link and try again.",
       });
     }
+
+    console.log("Controller: Form submitted successfully, ID:", result._id);
 
     return res.status(200).json({
       success: true,
@@ -218,7 +239,31 @@ export const submitEmploymentForm = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error("Submit employment form error:", error);
+    console.error("Submit employment form error:", error.message);
+
+    // Handle specific error cases
+    if (error.message.includes("already been submitted")) {
+      return res.status(409).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    if (error.message.includes("expired")) {
+      return res.status(410).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    if (error.message.includes("Token is required")) {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    // Generic server error
     return res.status(500).json({
       success: false,
       error: error.message || "Server error while submitting employment form",

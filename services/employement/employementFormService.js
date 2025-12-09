@@ -1,11 +1,26 @@
 import EmploymentForm from "../../models/employement/EmploymentForm.js";
+import emailService from "../email/emailService.js";
+import crypto from "crypto";
 class EmploymentFormService {
   static async createEmploymentForm(employmentFormData) {
     try {
-      const newForm = await EmploymentForm.create(employmentFormData);
+      const newForm = new EmploymentForm(employmentFormData);
       // Generate token after creation
       const token = newForm.generateToken();
       await newForm.save();
+      // Send email directly
+      await emailService.sendEmploymentFormEmail(
+        {
+          fullName:
+            employmentFormData.personalInfo?.legalName ||
+            employmentFormData.employeeName,
+          email:
+            employmentFormData.contactInfo?.email ||
+            employmentFormData.employeeEmail,
+        },
+        token
+      );
+
       // Return both the form and the unhashed token
       return { form: newForm, token };
     } catch (error) {
@@ -52,6 +67,7 @@ class EmploymentFormService {
 
   static async getEmploymentFormByToken(token) {
     try {
+      console.log("DEBUG: Controller received raw token param:", token);
       const form = await EmploymentForm.findByToken(token);
       return form;
     } catch (error) {
@@ -81,24 +97,69 @@ class EmploymentFormService {
     }
   }
 
-  static async submitEmploymentForm(formId, employmentFormData) {
+  static async submitEmploymentForm(token, employmentFormData) {
     try {
-      // This update operation merges the incoming data with the existing document.
-      // It assumes the employee submits all the necessary nested fields (personalInfo, cnicInfo, etc.).
+      // Clean and validate token
+      const cleanToken = token?.trim();
+      if (!cleanToken) {
+        console.error("Service Error: No token provided");
+        throw new Error("Token is required to submit employment form.");
+      }
+
+      console.log(
+        "DEBUG: Attempting to find form with token (first 10 chars):",
+        cleanToken.substring(0, 10)
+      );
+
+      // Find form by token
+      const formToUpdate = await EmploymentForm.findByToken(cleanToken);
+
+      if (!formToUpdate) {
+        console.error(
+          "Service Error: Employment form not found for token (first 10 chars):",
+          cleanToken.substring(0, 10)
+        );
+        return null;
+      }
+
+      console.log("DEBUG: Found form with ID:", formToUpdate._id);
+
+      // Check if form is already submitted
+      if (formToUpdate.status === "submitted") {
+        console.error(
+          "Service Error: Form already submitted, ID:",
+          formToUpdate._id
+        );
+        throw new Error("This employment form has already been submitted.");
+      }
+
+      // Check if token is expired
+      if (formToUpdate.isTokenExpired()) {
+        console.error(
+          "Service Error: Token expired for form ID:",
+          formToUpdate._id
+        );
+        throw new Error("This employment form link has expired.");
+      }
+
+      console.log("DEBUG: Updating form with ID:", formToUpdate._id);
+
+      // Update the form
       const updatedForm = await EmploymentForm.findByIdAndUpdate(
-        formId,
+        formToUpdate._id,
         {
-          ...employmentFormData, // Spread the incoming data (includes nested objects)
-          status: "submitted",
+          ...employmentFormData,
+          status: "pending_review",
           submittedAt: new Date(),
         },
         { new: true, runValidators: true }
       );
 
+      console.log("DEBUG: Form successfully updated, ID:", updatedForm._id);
       return updatedForm;
     } catch (error) {
-      console.error("Service Error (submitEmploymentForm):", error);
-      throw new Error("Failed to submit employment form.");
+      console.error("Service Error (submitEmploymentForm):", error.message);
+      throw error; // Re-throw the original error instead of wrapping it
     }
   }
 }

@@ -40,7 +40,8 @@ export const getContracts = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: result,
+      data: result.contracts,
+      pagination: result.pagination,
     });
   } catch (error) {
     return res.status(500).json({

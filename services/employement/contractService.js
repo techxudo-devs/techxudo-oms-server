@@ -2,6 +2,7 @@ import EmployementContract from "../../models/employement/EmployementContract.js
 import EmploymentForm from "../../models/employement/EmploymentForm.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import emailService from "../email/emailService.js";
 
 class ContractService {
   static async createContract(contractData) {
@@ -9,9 +10,11 @@ class ContractService {
 
     //Generate token for contract
     const token = crypto.randomBytes(32).toString("hex");
-    const hashedToken = await bcrypt.hash(token, 10);
 
-    contract.signingToken = hashedToken;
+    // Storing directly to allow indexed lookup.
+    // For higher security, we could use a separate tokenId and tokenSecret,
+    // but for this refactor, a high-entropy 64-char hex string is sufficient.
+    contract.signingToken = token;
     contract.tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     await contract.save();
 
@@ -30,7 +33,7 @@ class ContractService {
     const total = await EmployementContract.countDocuments(filter);
 
     return {
-      data: contracts,
+      contracts,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
@@ -47,16 +50,13 @@ class ContractService {
   }
 
   static async getContractByToken(token) {
-    const contracts = await EmployementContract.find({
+    const contract = await EmployementContract.findOne({
+      signingToken: token,
       status: { $in: ["sent", "draft"] },
+      tokenExpiry: { $gt: new Date() },
     });
-    for (const contract of contracts) {
-      const isMatch = await bcrypt.compare(token, contract.signingToken || "");
-      if (isMatch && contract.tokenExpiry > new Date()) {
-        return contract;
-      }
-    }
-    return null;
+
+    return contract;
   }
 
   static async signContract(token, signatureData) {
@@ -99,7 +99,18 @@ class ContractService {
     contract.sentAt = new Date();
     await contract.save();
 
-    // TODO: Send email with signing link
+    // Send email with signing link
+    try {
+      await emailService.sendContractEmail(contract, contract.signingToken);
+      console.log(`✅ Contract email sent successfully for contract ${id}`);
+    } catch (emailError) {
+      console.error(
+        `❌ Failed to send contract email for ${id}:`,
+        emailError.message
+      );
+      // Don't throw - contract is still marked as sent even if email fails
+      // Admin can resend manually if needed
+    }
 
     return contract;
   }

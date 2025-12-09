@@ -27,7 +27,6 @@ router.get(
   appointmentLetterController.getAppointmentLetter
 );
 
-// Public routes (token-based access, no auth required)
 router.get("/view/:token", appointmentLetterController.markAsViewed);
 
 router.post(
