@@ -6,7 +6,6 @@ export const initAppointmentSubscribers = () => {
     try {
       console.log(`Processing appointment acceptance for ${appointmentLetter.employeeEmail}`);
 
-      // 1. Send Confirmation Email
       const confirmationEmailTemplate = `
         <h1>Offer Accepted!</h1>
         <p>Dear ${appointmentLetter.employeeName},</p>

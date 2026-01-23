@@ -342,5 +342,24 @@ export const validateCompleteSetup = [
     .isArray()
     .withMessage("Departments must be an array"),
 
+  body("documents")
+    .optional()
+    .isArray()
+    .withMessage("Documents must be an array"),
+  body("documents.*.name").optional().isString(),
+  body("documents.*.url").optional().isString(),
+
+  body("emailSettings")
+    .optional()
+    .isObject()
+    .withMessage("Email settings must be an object"),
+  body("emailSettings.fromName").optional().isString(),
+  body("emailSettings.fromEmail").optional().isEmail(),
+  body("emailSettings.headerColor")
+    .optional()
+    .matches(/^#[0-9A-F]{6}$/i)
+    .withMessage("Header color must be a valid hex color"),
+  body("emailSettings.templateStyle").optional().isIn(["modern", "minimal"]),
+
   validate
 ];

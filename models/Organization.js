@@ -93,6 +93,16 @@ const organizationSchema = new mongoose.Schema(
       },
     ],
 
+    // Company Documents (uploaded or template references)
+    documents: [
+      {
+        name: { type: String, required: true },
+        type: { type: String, default: "upload" }, // upload | template
+        url: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
     signatureAuthority: {
       authorityType: {
         type: String,
@@ -119,7 +129,7 @@ const organizationSchema = new mongoose.Schema(
       },
       planId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Subscription Plan",
+        ref: "SubscriptionPlan",
       },
       userLimit: {
         type: Number,
@@ -130,7 +140,7 @@ const organizationSchema = new mongoose.Schema(
         default: Date.now(),
       },
       endDate: {
-        type: String,
+        type: Date,
         default: function () {
           const date = new Date();
           date.setDate(date.getDate() + 30);
@@ -171,7 +181,7 @@ const organizationSchema = new mongoose.Schema(
           default: "",
         },
         isRequired: {
-          type: String,
+          type: Boolean,
           default: true,
         },
         order: {
@@ -184,6 +194,15 @@ const organizationSchema = new mongoose.Schema(
         },
       },
     ],
+
+    // Email branding and templates
+    emailSettings: {
+      fromName: { type: String, default: "" },
+      fromEmail: { type: String, default: "" },
+      headerColor: { type: String, default: "#000000" },
+      footerText: { type: String, default: "" },
+      templateStyle: { type: String, enum: ["modern", "minimal"], default: "modern" },
+    },
     owner: {
       fullName: {
         type: String,
@@ -225,6 +244,12 @@ const organizationSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Track total employees at organization level
+    totalEmployees: {
+      type: Number,
+      default: 0,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -251,11 +276,11 @@ organizationSchema.methods.isSubscriptionActive = function () {
   );
 };
 
-organizationSchema.method.hasReachedUserLimit = function () {
+organizationSchema.methods.hasReachedUserLimit = function () {
   return this.totalEmployees >= this.subscription.userLimit;
 };
 
-organizationSchema.method.addDepartment = function (departmentData) {
+organizationSchema.methods.addDepartment = function (departmentData) {
   this.departments.push(departmentData);
   return this.save();
 };

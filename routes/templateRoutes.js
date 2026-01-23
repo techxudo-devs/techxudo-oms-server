@@ -1,14 +1,10 @@
 import express from "express";
-import {
-  createTemplate,
-  getTemplates,
-  getTemplateById,
-  updateTemplate,
-  deleteTemplate,
-} from "../controllers/documents/templateController.js";
+import { createTemplate, getTemplates, getTemplateById, updateTemplate, deleteTemplate } from "../controllers/documents/templateController.js";
+import { previewBrandedTemplate, generateBrandedTemplate } from "../controllers/documents/brandedTemplateController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
 import { body } from "express-validator";
+import { organizationContext } from "../middlewares/organizationContext.js";
 
 const router = express.Router();
 
@@ -42,5 +38,22 @@ router
     updateTemplate
   )
   .delete(authMiddleware, isAdmin, deleteTemplate);
+
+// Branded templates: preview (HTML) and generate (PDF to Cloudinary)
+router.get(
+  "/preview",
+  authMiddleware,
+  isAdmin,
+  organizationContext,
+  previewBrandedTemplate
+);
+
+router.post(
+  "/generate",
+  authMiddleware,
+  isAdmin,
+  organizationContext,
+  generateBrandedTemplate
+);
 
 export default router;
