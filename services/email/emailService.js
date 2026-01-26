@@ -11,6 +11,8 @@ import LateArrivalEmail from "../../emails/LateArrivalEmail.js";
 import AbsentNotificationEmail from "../../emails/AbsentNotificationEmail.js";
 import EmploymentFormEmail from "../../emails/EmploymentFormEmail.js";
 import ContractEmail from "../../emails/ContractEmail.js";
+import CandidateAcknowledgementEmail from "../../emails/CandidateAcknowledgementEmail.js";
+import ScreeningInviteEmail from "../../emails/ScreeningInviteEmail.js";
 /**
  * Email Service - Handles all email-related business logic
  */
@@ -33,6 +35,46 @@ class EmailService {
   }
 
   /**
+   * Send candidate acknowledgement (upon creation/shortlisting)
+   */
+  async sendCandidateAcknowledgement(org, candidate, jobTitle, department) {
+    const html = await render(
+      React.createElement(CandidateAcknowledgementEmail, {
+        org,
+        candidate,
+        jobTitle,
+        department,
+      })
+    );
+    const subject = `Application received - ${org?.companyName || "Our Company"}`;
+    return this.sendEmail({ to: candidate.email, subject, html });
+  }
+
+  /**
+   * Send screening invite using branding-aware template
+   */
+  async sendScreeningInvite(org, to, subject, message, candidate = {}, jobTitle) {
+    const fallbackSubject = `Screening Invitation${jobTitle ? ` - ${jobTitle}` : ''}`;
+    const fallbackMessage = `We'd like to invite you to a short screening as the next step in our hiring process.
+
+This includes a brief online assessment and/or a 15–20 minute call.
+
+Please reply with your availability for the next 2–3 days.`;
+    const finalSubject = subject || fallbackSubject;
+    const finalMessage = message || fallbackMessage;
+    const html = await render(
+      React.createElement(ScreeningInviteEmail, {
+        org,
+        candidate,
+        subject: finalSubject,
+        message: finalMessage,
+        jobTitle,
+      })
+    );
+    return this.sendEmail({ to, subject: finalSubject, html, text: finalMessage });
+  }
+
+  /**
    * Base send email function
    * @param {Object} options - Email options
    * @param {string} options.to - Recipient email
@@ -41,7 +83,7 @@ class EmailService {
    * @param {string} options.text - Plain text content (optional)
    * @returns {Promise<Object>} Email send result
    */
-  async sendEmail({ to, subject, html, text }) {
+  async sendEmail({ to, subject, html, text, cc, bcc }) {
     try {
       const transporter = this.createTransporter();
 
@@ -53,6 +95,8 @@ class EmailService {
         subject,
         html,
         text: text || "",
+        cc,
+        bcc,
       };
 
       const info = await transporter.sendMail(mailOptions);

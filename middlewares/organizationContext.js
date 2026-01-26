@@ -29,7 +29,7 @@ export const organizationContext = async (req, res, next) => {
     const cached = orgCache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      req.Organization = cached.data;
+      req.organization = cached.data;
       return next();
     }
 

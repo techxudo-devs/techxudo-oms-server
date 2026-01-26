@@ -135,10 +135,11 @@ class OrganizationService {
       "companyName",
       "logo",
       "industry",
-      "workingHours",
+      "theme",
       "address",
       "workingHours",
       "signatureAuthority",
+      "emailSettings",
     ];
 
     Object.keys(updateData).forEach((key) => {

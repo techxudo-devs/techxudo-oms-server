@@ -41,11 +41,22 @@ class OnboardingService {
         throw new Error("Salary must be a positive number");
       }
 
-      // Check if user already exists
-      const existingUser = await User.findOne({ email });
+      // Resolve admin/organization
+      const admin = await User.findById(adminId);
+      if (!admin || !admin.organizationId) {
+        throw new Error("Admin or organization context not found");
+      }
+
+      // Check if user already exists (in same org)
+      const existingUser = await User.findOne({ email, organizationId: admin.organizationId });
       if (existingUser) {
         throw new Error("User already exists with this email");
       }
+
+      // Resolve joining date (default +7 days)
+      const resolvedJoiningDate = joiningDate
+        ? new Date(joiningDate)
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       // Create temporary employee account (inactive until onboarding complete)
       const employee = new User({
@@ -53,11 +64,9 @@ class OnboardingService {
         email,
         passwordHash: crypto.randomBytes(32).toString("hex"), // Temporary password
         role: "employee",
-        designation,
-        department: department || "",
-        joiningDate: joiningDate ? new Date(joiningDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days from now
-        salary,
-        phone,
+        organizationId: admin.organizationId,
+        // Note: User schema may not include designation/salary/phone/joiningDate at top-level.
+        // These are intentionally not relied on here beyond offer snapshot below.
         isActive: false, // Inactive until onboarding is complete
         isEmailVerified: false
       });
@@ -67,13 +76,14 @@ class OnboardingService {
       // Create onboarding record
       const onboarding = new Onboarding({
         employeeId: employee._id,
+        organizationId: admin.organizationId,
         offerDetails: {
           fullName,
           email,
           designation,
           department: department || "",
           salary,
-          joiningDate: employee.joiningDate,
+          joiningDate: resolvedJoiningDate,
           phone
         },
         createdBy: adminId
