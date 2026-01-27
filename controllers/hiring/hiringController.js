@@ -152,6 +152,10 @@ export const moveStage = async (req, res) => {
       await hiringEmailService.sendRejection(application._id, notes);
     } else if (newStage === "offer") {
       try {
+        // Ensure candidate data is available
+        if (!application.populated("candidateId")) {
+          await application.populate("candidateId");
+        }
         // Create onboarding + temp employee and send the standard OfferLetterEmail
         const candidateName = application.candidateId?.name || application.candidate?.name || "Candidate";
         const candidateEmail = application.candidateId?.email || application.candidate?.email;
@@ -161,7 +165,7 @@ export const moveStage = async (req, res) => {
             email: candidateEmail,
             designation: application.positionTitle,
             salary: Number(application.offer?.salary || salary || 0),
-            phone: phone || "",
+            phone: phone || application.candidateId?.phone || "",
             department: application.department || "",
             joiningDate: application.offer?.joiningDate || joiningDate || undefined,
           },
@@ -176,8 +180,17 @@ export const moveStage = async (req, res) => {
         // Send offer letter using existing template and token
         await EmailService.sendOfferLetterEmail(result.onboarding.offerDetails, result.token);
       } catch (e) {
-        console.error("Offer email/onboarding error:", e.message);
-        // Do not block move; continue flow
+        console.error("Offer email/onboarding error:", e);
+        const msg = e?.message || String(e);
+        // Surface duplicate user error clearly to client
+        if (msg.includes('E11000') || msg.toLowerCase().includes('already exists')) {
+          return res.status(409).json(
+            ApiResponse.error('Failed to initiate offer', msg, 409)
+          );
+        }
+        return res.status(400).json(
+          ApiResponse.error('Failed to initiate offer', msg, 400)
+        );
       }
     }
 
