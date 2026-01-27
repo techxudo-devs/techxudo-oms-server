@@ -13,6 +13,7 @@ import {
   updateInterviewFeedback,
   deleteApplication,
   getHiringStats,
+  deleteCandidate,
 } from "../controllers/hiring/hiringController.js";
 
 const router = express.Router();
@@ -30,5 +31,6 @@ router.post("/applications/:id/schedule-interview", isAdmin, scheduleInterview);
 router.put("/applications/:id/interviews/:interviewId/feedback", isAdmin, updateInterviewFeedback);
 router.delete("/applications/:id", isAdmin, deleteApplication);
 router.get("/stats", getHiringStats);
+router.delete("/candidates/:id", isAdmin, deleteCandidate);
 
 export default router;

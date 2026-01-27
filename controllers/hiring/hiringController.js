@@ -2,6 +2,8 @@ import Candidate from "../../models/hiring/Candidate.js";
 import Application from "../../models/hiring/Application.js";
 import ApiResponse from "../../utils/apiResponse.js";
 import hiringEmailService from "../../services/hiring/hiringEmailService.js";
+import OnboardingService from "../../services/onboarding/onboardingService.js";
+import EmailService from "../../services/email/emailService.js";
 
 // GET /api/hiring/applications
 export const listApplications = async (req, res) => {
@@ -117,7 +119,7 @@ export const moveStage = async (req, res) => {
   try {
     const orgId = req.organization?._id || req.organizationId || req.user.organizationId;
     const { id } = req.params;
-    const { stage, notes, salary, joiningDate, currency } = req.body;
+    const { stage, notes, salary, joiningDate, currency, phone } = req.body;
 
     if (!stage) {
       return res.status(400).json(ApiResponse.error("Stage is required"));
@@ -148,6 +150,35 @@ export const moveStage = async (req, res) => {
       await hiringEmailService.sendScreeningInvite(application._id);
     } else if (newStage === "rejected") {
       await hiringEmailService.sendRejection(application._id, notes);
+    } else if (newStage === "offer") {
+      try {
+        // Create onboarding + temp employee and send the standard OfferLetterEmail
+        const candidateName = application.candidateId?.name || application.candidate?.name || "Candidate";
+        const candidateEmail = application.candidateId?.email || application.candidate?.email;
+        const result = await OnboardingService.createEmployee(
+          {
+            fullName: candidateName,
+            email: candidateEmail,
+            designation: application.positionTitle,
+            salary: Number(application.offer?.salary || salary || 0),
+            phone: phone || "",
+            department: application.department || "",
+            joiningDate: application.offer?.joiningDate || joiningDate || undefined,
+          },
+          req.user._id,
+        );
+        // Link onboarding to application
+        application.offer = {
+          ...(application.offer || {}),
+          onboardingId: result.onboarding.id,
+        };
+        await application.save();
+        // Send offer letter using existing template and token
+        await EmailService.sendOfferLetterEmail(result.onboarding.offerDetails, result.token);
+      } catch (e) {
+        console.error("Offer email/onboarding error:", e.message);
+        // Do not block move; continue flow
+      }
     }
 
     await application.populate("candidateId");
@@ -317,5 +348,31 @@ export const getHiringStats = async (req, res) => {
   } catch (error) {
     console.error("getHiringStats error:", error);
     return res.status(500).json(ApiResponse.error("Failed to fetch stats", error.message));
+  }
+};
+
+// DELETE /api/hiring/candidates/:id (Dev only)
+export const deleteCandidate = async (req, res) => {
+  try {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json(ApiResponse.error("Not allowed in production"));
+    }
+    const orgId = req.organization?._id || req.organizationId || req.user.organizationId;
+    const { id } = req.params;
+
+    const candidate = await Candidate.findOne({ _id: id, organizationId: orgId });
+    if (!candidate) {
+      return res.status(404).json(ApiResponse.error("Candidate not found"));
+    }
+
+    const appDelete = await Application.deleteMany({ organizationId: orgId, candidateId: id });
+    await Candidate.deleteOne({ _id: id });
+
+    return res.json(
+      ApiResponse.success({ deletedApplications: appDelete.deletedCount || 0 }, "Candidate and related applications deleted"),
+    );
+  } catch (error) {
+    console.error("deleteCandidate error:", error);
+    return res.status(500).json(ApiResponse.error("Failed to delete candidate", error.message));
   }
 };
