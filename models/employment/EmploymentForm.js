@@ -68,7 +68,7 @@ const employmentFormSchema = new mongoose.Schema(
       alternatePhone: String,
       email: {
         type: String,
-        required: true, // Email is always required for identification
+        required: true,
       },
       emergencyContact: {
         name: String,
@@ -144,3 +144,4 @@ employmentFormSchema.statics.findByToken = async function (unhashedToken) {
 };
 
 export default mongoose.model("EmploymentForm", employmentFormSchema);
+

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import EmploymentForm from "./models/employement/EmploymentForm.js";
+import EmploymentForm from "./models/employment/EmploymentForm.js";
 
 dotenv.config();
 
@@ -28,7 +28,7 @@ const run = async () => {
     await EmploymentForm.deleteMany({ employeeEmail: "debug@test.com" });
     console.log("Cleanup done");
 
-    const AppointmentLetter = (await import("./models/employement/AppointmentLetter.js")).default;
+    const AppointmentLetter = (await import("./models/employment/AppointmentLetter.js")).default;
     const appointments = await AppointmentLetter.countDocuments();
     console.log(`Found ${appointments} appointments`);
 

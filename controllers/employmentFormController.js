@@ -1,4 +1,4 @@
-import EmploymentFormService from "../services/employement/employementFormService.js";
+import EmploymentFormService from "../services/employment/employmentFormService.js";
 /**
  * @desc    Create employment form (Admin only)
  * @route   POST /api/employment-forms

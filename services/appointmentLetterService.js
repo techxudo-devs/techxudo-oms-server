@@ -1,4 +1,4 @@
-import AppointmentLetter from "../models/employement/AppointmentLetter.js";
+import AppointmentLetter from "../models/employment/AppointmentLetter.js";
 import crypto from "crypto";
 import emailService from "../services/email/emailService.js";
 import eventService from "../services/eventService.js";

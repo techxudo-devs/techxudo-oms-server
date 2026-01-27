@@ -1,4 +1,4 @@
-import EmploymentForm from "../../models/employement/EmploymentForm.js";
+import EmploymentForm from "../../models/employment/EmploymentForm.js";
 import emailService from "../email/emailService.js";
 import crypto from "crypto";
 class EmploymentFormService {
@@ -124,8 +124,8 @@ class EmploymentFormService {
 
       console.log("DEBUG: Found form with ID:", formToUpdate._id);
 
-      // Check if form is already submitted
-      if (formToUpdate.status === "submitted") {
+      // Prevent resubmission if not in draft
+      if (formToUpdate.status && formToUpdate.status !== "draft") {
         console.error(
           "Service Error: Form already submitted, ID:",
           formToUpdate._id

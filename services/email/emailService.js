@@ -13,6 +13,8 @@ import EmploymentFormEmail from "../../emails/EmploymentFormEmail.js";
 import ContractEmail from "../../emails/ContractEmail.js";
 import CandidateAcknowledgementEmail from "../../emails/CandidateAcknowledgementEmail.js";
 import ScreeningInviteEmail from "../../emails/ScreeningInviteEmail.js";
+import InterviewInviteEmail from "../../emails/InterviewInviteEmail.js";
+import RejectionEmail from "../../emails/RejectionEmail.js";
 /**
  * Email Service - Handles all email-related business logic
  */
@@ -72,6 +74,52 @@ Please reply with your availability for the next 2–3 days.`;
       })
     );
     return this.sendEmail({ to, subject: finalSubject, html, text: finalMessage });
+  }
+
+  /**
+   * Send interview invite using branding-aware template
+   */
+  async sendInterviewInvite(org, candidate, application, interview, subjectOverride = null, message = "") {
+    // Hardcoded subject per request
+    const subject = `Your Interview Has Been Scheduled – ${application?.positionTitle || "Position"}`;
+    const html = await render(
+      React.createElement(InterviewInviteEmail, {
+        org,
+        candidate,
+        application,
+        interview,
+        message,
+      })
+    );
+    const textParts = [];
+    if (interview?.scheduledAt) {
+      const when = new Date(interview.scheduledAt).toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      textParts.push(`When: ${when}`);
+    }
+    if (interview?.duration) textParts.push(`Duration: ${interview.duration} minutes`);
+    if (interview?.meetingLink) textParts.push(`Meeting Link: ${interview.meetingLink}`);
+    if (interview?.location) textParts.push(`Location: ${interview.location}`);
+    const text = `Interview Invitation\n${textParts.join("\n")}${message ? `\n\n${message}` : ""}`;
+    return this.sendEmail({ to: candidate.email, subject, html, text });
+  }
+
+  /**
+   * Send rejection email using branding-aware template
+   */
+  async sendRejectionEmail(org, candidate, jobTitle, reason) {
+    const subject = `Application Update - ${jobTitle || org?.companyName || "Our Company"}`;
+    const html = await render(
+      React.createElement(RejectionEmail, { org, candidate, jobTitle, reason })
+    );
+    const text = `We appreciate your interest. Unfortunately, we won't proceed at this time.${reason ? ` Reason: ${reason}` : ""}`;
+    return this.sendEmail({ to: candidate.email, subject, html, text });
   }
 
   /**

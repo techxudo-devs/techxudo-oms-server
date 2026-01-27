@@ -1,4 +1,4 @@
-import ContractService from "../../services/employement/contractService.js";
+import ContractService from "../../services/employment/contractService.js";
 
 export const createContract = async (req, res) => {
   try {

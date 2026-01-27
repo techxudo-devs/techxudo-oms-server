@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import EmploymentFormService from "./services/employement/employementFormService.js";
-import EmploymentForm from "./models/employement/EmploymentForm.js";
+import EmploymentFormService from "./services/employment/employmentFormService.js";
+import EmploymentForm from "./models/employment/EmploymentForm.js";
 
 dotenv.config();
 

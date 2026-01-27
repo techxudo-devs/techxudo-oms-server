@@ -12,20 +12,33 @@ export const organizationContext = async (req, res, next) => {
       });
     }
 
-    const organizationId = req.user.organizationId;
+    // Resolve organization id for all users (including superadmin)
+    const resolvedOrgId =
+      req.user.organizationId ||
+      req.headers["x-organization-id"] ||
+      req.query.organizationId ||
+      req.body?.organizationId ||
+      req.organizationId;
 
-    if (req.user.role === "superadmin") {
-      return next();
-    }
-    if (!organizationId) {
+    if (!resolvedOrgId && req.user.role !== "superadmin") {
       return res.status(404).json({
         success: false,
         message: "No organization associated with this user",
       });
     }
+    // Superadmin fallback: if no explicit org provided, fallback to first org
+    if (!resolvedOrgId && req.user.role === "superadmin") {
+      const anyOrg = await Organization.findOne().select("-__v").lean();
+      if (!anyOrg) {
+        return res.status(404).json({ success: false, message: "Organization not Found" });
+      }
+      req.organization = anyOrg;
+      req.organizationId = anyOrg._id;
+      return next();
+    }
 
     //Check cache first
-    const cacheKey = `org_${organizationId}`;
+    const cacheKey = `org_${resolvedOrgId}`;
     const cached = orgCache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -33,7 +46,7 @@ export const organizationContext = async (req, res, next) => {
       return next();
     }
 
-    const organization = await Organization.findById(organizationId)
+    const organization = await Organization.findById(resolvedOrgId)
       .select("-__v")
       .lean();
     if (!organization) {
@@ -67,6 +80,7 @@ export const organizationContext = async (req, res, next) => {
     });
 
     req.organization = organization;
+    req.organizationId = organization._id;
     next();
   } catch (error) {
     console.log("Organization context error", error);

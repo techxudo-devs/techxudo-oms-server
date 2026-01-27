@@ -85,3 +85,4 @@ appointmentLetterSchema.index({ organizationId: 1, status: 1 });
 appointmentLetterSchema.index({ employeeEmail: 1, organizationId: 1 });
 
 export default mongoose.model("AppointmentLetter", appointmentLetterSchema);
+

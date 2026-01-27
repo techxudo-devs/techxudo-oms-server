@@ -1,19 +1,15 @@
-import EmployementContract from "../../models/employement/EmployementContract.js";
-import EmploymentForm from "../../models/employement/EmploymentForm.js";
+import EmploymentContract from "../../models/employment/EmploymentContract.js";
+import EmploymentForm from "../../models/employment/EmploymentForm.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import emailService from "../email/emailService.js";
 
 class ContractService {
   static async createContract(contractData) {
-    const contract = await EmployementContract.create(contractData);
+    const contract = await EmploymentContract.create(contractData);
 
-    //Generate token for contract
     const token = crypto.randomBytes(32).toString("hex");
 
-    // Storing directly to allow indexed lookup.
-    // For higher security, we could use a separate tokenId and tokenSecret,
-    // but for this refactor, a high-entropy 64-char hex string is sufficient.
     contract.signingToken = token;
     contract.tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     await contract.save();
@@ -23,14 +19,14 @@ class ContractService {
 
   static async getContracts({ filter, page, limit }) {
     const skip = (page - 1) * limit;
-    const contracts = await EmployementContract.find(filter)
+    const contracts = await EmploymentContract.find(filter)
       .populate("employeeId", "name email")
       .populate("createdBy", "name")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    const total = await EmployementContract.countDocuments(filter);
+    const total = await EmploymentContract.countDocuments(filter);
 
     return {
       contracts,
@@ -43,14 +39,14 @@ class ContractService {
   }
 
   static async getContractById(id) {
-    return await EmployementContract.findById(id)
+    return await EmploymentContract.findById(id)
       .populate("employeeId", "name email")
       .populate("employmentFormId")
       .populate("createdBy", "name ");
   }
 
   static async getContractByToken(token) {
-    const contract = await EmployementContract.findOne({
+    const contract = await EmploymentContract.findOne({
       signingToken: token,
       status: { $in: ["sent", "draft"] },
       tokenExpiry: { $gt: new Date() },
@@ -90,7 +86,7 @@ class ContractService {
 
   // Send contract to employee
   static async sendContract(id) {
-    const contract = await EmployementContract.findById(id);
+    const contract = await EmploymentContract.findById(id);
 
     if (!contract) throw new Error("Contract not found");
     if (contract.status !== "draft") throw new Error("Contract already sent");
@@ -106,7 +102,7 @@ class ContractService {
     } catch (emailError) {
       console.error(
         `❌ Failed to send contract email for ${id}:`,
-        emailError.message
+        emailError.message,
       );
       // Don't throw - contract is still marked as sent even if email fails
       // Admin can resend manually if needed
