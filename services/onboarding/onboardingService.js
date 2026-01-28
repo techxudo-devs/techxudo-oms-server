@@ -1,6 +1,7 @@
 import Onboarding from "../../models/Onboarding.js";
 import User from "../../models/User.js";
 import crypto from "crypto";
+import EmploymentFormService from "../employment/employmentFormService.js";
 
 /**
  * Onboarding Service - Handles all onboarding-related business logic
@@ -148,16 +149,49 @@ class OnboardingService {
         throw new Error("This offer has been revoked by the admin");
       }
 
-      return {
+      const response = {
         status: onboarding.status,
         offerDetails: onboarding.offerDetails,
         respondedAt: onboarding.respondedAt,
         rejectionReason: onboarding.rejectionReason,
         expiresAt: onboarding.tokenExpiry,
       };
+
+      // Attach minimal org branding
+      try {
+        const orgModel = (await import("../../models/Organization.js")).default;
+        const org = await orgModel
+          .findById(onboarding.organizationId)
+          .select("companyName logo theme")
+          .lean();
+        if (org) response.org = org;
+      } catch (e) {
+        // ignore branding fetch errors
+      }
+
+      return response;
     } catch (error) {
       throw new Error(`Error getting onboarding details: ${error.message}`);
     }
+  }
+
+  /** Ensure an employment form exists for this onboarding and return a token */
+  async ensureEmploymentFormToken(token) {
+    const onboarding = await Onboarding.findByToken(token);
+    if (!onboarding) throw new Error("Invalid onboarding link");
+    if (onboarding.status !== "accepted") throw new Error("Offer must be accepted first");
+
+    const offer = onboarding.offerDetails || {};
+    const payload = {
+      organizationId: onboarding.organizationId,
+      employeeEmail: offer.email,
+      personalInfo: { legalName: offer.fullName || "" },
+      contactInfo: { email: offer.email, phone: offer.phone || "" },
+      addresses: {},
+      acceptedPolicies: [],
+    };
+    const { token: formToken } = await EmploymentFormService.createEmploymentForm(payload);
+    return { token: formToken };
   }
 
   /**
@@ -190,11 +224,38 @@ class OnboardingService {
       onboarding.respondedAt = new Date();
       await onboarding.save();
 
+      // Auto-create Employment Form for the candidate and email link
+      let createdFormToken = null;
+      try {
+        const offer = onboarding.offerDetails || {};
+        const { organizationId } = onboarding;
+        const employmentFormPayload = {
+          organizationId,
+          // appointmentLetterId intentionally omitted (not required for onboarding-created forms)
+          employeeEmail: offer.email,
+          personalInfo: { legalName: offer.fullName || "" },
+          contactInfo: { email: offer.email, phone: offer.phone || "" },
+          addresses: {},
+          acceptedPolicies: [],
+        };
+        const { token: formToken } = await EmploymentFormService.createEmploymentForm(
+          employmentFormPayload
+        );
+        createdFormToken = formToken;
+      } catch (err) {
+        console.error("Failed to create/send employment form after offer accept:", err?.message || err);
+      }
+
+      if (!createdFormToken) {
+        throw new Error("Failed to create employment form link. Please try again.");
+      }
+
       return {
         success: true,
-        message: "Offer accepted successfully! Please complete your onboarding.",
+        message: "Offer accepted successfully! Continue by completing your employment form.",
         data: {
           status: onboarding.status,
+          employmentFormToken: createdFormToken,
         },
       };
     } catch (error) {

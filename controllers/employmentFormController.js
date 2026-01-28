@@ -1,4 +1,5 @@
 import EmploymentFormService from "../services/employment/employmentFormService.js";
+import Organization from "../models/Organization.js";
 /**
  * @desc    Create employment form (Admin only)
  * @route   POST /api/employment-forms
@@ -178,9 +179,20 @@ export const getEmploymentFormByToken = async (req, res) => {
       });
     }
 
+    // Include organization branding in the response for public rendering
+    let org = null;
+    try {
+      org = await Organization.findById(result.organizationId)
+        .select("companyName logo theme")
+        .lean();
+    } catch (e) {
+      // ignore branding fetch error
+    }
+
     return res.status(200).json({
       success: true,
       data: result,
+      org,
     });
   } catch (error) {
     console.error("Get employment form by token error:", error);

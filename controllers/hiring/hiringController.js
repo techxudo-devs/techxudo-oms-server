@@ -178,7 +178,11 @@ export const moveStage = async (req, res) => {
         };
         await application.save();
         // Send offer letter using existing template and token
-        await EmailService.sendOfferLetterEmail(result.onboarding.offerDetails, result.token);
+        await EmailService.sendOfferLetterEmail(
+          result.onboarding.offerDetails,
+          result.token,
+          req.organization || null
+        );
       } catch (e) {
         console.error("Offer email/onboarding error:", e);
         const msg = e?.message || String(e);

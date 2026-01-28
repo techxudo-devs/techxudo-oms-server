@@ -131,12 +131,12 @@ Please reply with your availability for the next 2–3 days.`;
    * @param {string} options.text - Plain text content (optional)
    * @returns {Promise<Object>} Email send result
    */
-  async sendEmail({ to, subject, html, text, cc, bcc }) {
+  async sendEmail({ to, subject, html, text, cc, bcc, org }) {
     try {
       const transporter = this.createTransporter();
 
       const mailOptions = {
-        from: `"${process.env.FROM_NAME || "Techxudo OMS"}" <${
+        from: `"${(org && (org.emailSettings?.fromName || org.companyName)) || process.env.FROM_NAME || "Techxudo OMS"}" <${
           process.env.FROM_EMAIL || process.env.SMTP_USER
         }>`,
         to,
@@ -163,7 +163,7 @@ Please reply with your availability for the next 2–3 days.`;
    * @param {string} token - Onboarding token
    * @returns {Promise<Object>} Email send result
    */
-  async sendOfferLetterEmail(offerData, token) {
+  async sendOfferLetterEmail(offerData, token, org = null) {
     try {
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -173,6 +173,7 @@ Please reply with your availability for the next 2–3 days.`;
           offerData,
           token,
           frontendUrl,
+          org,
         })
       );
 
@@ -193,10 +194,11 @@ Please reply with your availability for the next 2–3 days.`;
         day: "numeric",
       });
 
+      const company = (org && org.companyName) || "Our Company";
       const text = `
 Congratulations, ${fullName}!
 
-We are pleased to offer you the position of ${designation} at Techxudo.
+We are pleased to offer you the position of ${designation} at ${company}.
 
 Offer Details:
 - Position: ${designation}
@@ -210,14 +212,15 @@ ${onboardingUrl}
 This link will expire in 7 days.
 
 Best regards,
-Techxudo HR Team
+${company} HR Team
       `.trim();
 
       await this.sendEmail({
         to: offerData.email,
-        subject: "🎉 Offer Letter - Welcome to Techxudo",
+        subject: `🎉 Offer Letter - Welcome to ${(org && org.companyName) || "Our Company"}`,
         html,
         text,
+        org,
       });
 
       console.log(`📧 Offer letter sent to ${offerData.email}`);
@@ -812,7 +815,7 @@ Techxudo Office Management System
    * @param {string} token - Form token
    * @returns {Promise<Object>} Email send result
    */
-  async sendEmploymentFormEmail(employee, token) {
+  async sendEmploymentFormEmail(employee, token, org = null) {
     try {
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       const formLink = `${frontendUrl}/employment/form/${token}`;
@@ -822,28 +825,31 @@ Techxudo Office Management System
         React.createElement(EmploymentFormEmail, {
           employeeName: employee.fullName,
           formLink,
+          org,
         })
       );
 
       // Generate plain text version
+      const company = (org && org.companyName) || "Our Company";
       const text = `
 Dear ${employee.fullName},
 
-To proceed with your onboarding at Techxudo, we need you to complete your employment information form.
+To proceed with your onboarding at ${company}, we need you to complete your employment information form.
 
 Please visit: ${formLink}
 
 This link will expire in 7 days.
 
 Best regards,
-Techxudo Team
+${company} Team
       `.trim();
 
       await this.sendEmail({
         to: employee.email,
-        subject: "Action Required: Complete Your Employment Form",
+        subject: `Action Required: Complete Your Employment Form - ${company}`,
         html,
         text,
+        org,
       });
 
       console.log(`📧 Employment form email sent to ${employee.email}`);

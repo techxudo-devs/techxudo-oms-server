@@ -1,8 +1,8 @@
 import React from "react";
 import { Section, Text, Button } from "@react-email/components";
-import EmailLayout from "./components/EmailLayout.js";
+import BrandEmailLayout from "./components/BrandEmailLayout.js";
 
-const OfferLetterEmail = ({ offerData, token, frontendUrl }) => {
+const OfferLetterEmail = ({ offerData, token, frontendUrl, org }) => {
   const {
     fullName,
     designation,
@@ -25,15 +25,13 @@ const OfferLetterEmail = ({ offerData, token, frontendUrl }) => {
     day: "numeric"
   });
 
-  return React.createElement(EmailLayout, { preview: `Offer Letter - ${designation} Position` },
+  return React.createElement(BrandEmailLayout, { org, preview: `Offer Letter - ${designation} Position` },
     // Congratulations Banner
     React.createElement(Section, { style: banner },
       React.createElement(Text, { style: bannerTitle },
         `Congratulations, ${fullName}! 🎉`
       ),
-      React.createElement(Text, { style: bannerSubtitle },
-        "We're excited to offer you a position at Techxudo"
-      )
+      React.createElement(Text, { style: bannerSubtitle }, `We're excited to offer you a position at ${org?.companyName || "our company"}`)
     ),
 
     // Main Content
@@ -109,7 +107,7 @@ const OfferLetterEmail = ({ offerData, token, frontendUrl }) => {
       React.createElement(Text, { style: signature },
         "Best regards,",
         React.createElement("br"),
-        React.createElement("strong", null, "Techxudo HR Team")
+        React.createElement("strong", null, `${org?.companyName || "Our Company"} HR Team`)
       )
     )
   );

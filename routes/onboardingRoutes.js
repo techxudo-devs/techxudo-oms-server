@@ -36,5 +36,6 @@ router.get("/:token", onboardingController.getOnboardingDetails);
 router.post("/:token/accept", onboardingController.acceptOffer);
 router.post("/:token/reject", onboardingController.rejectOffer);
 router.post("/:token/complete", onboardingController.completeOnboarding);
+router.post("/:token/employment-form", onboardingController.ensureEmploymentForm);
 
 export default router;

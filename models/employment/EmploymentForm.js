@@ -12,7 +12,7 @@ const employmentFormSchema = new mongoose.Schema(
     appointmentLetterId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AppointmentLetter",
-      required: true,
+      required: false,
     },
     employeeEmail: {
       type: String,
@@ -24,6 +24,13 @@ const employmentFormSchema = new mongoose.Schema(
       type: String,
       unique: true,
       index: true,
+    },
+    // Non-hashed submission token (for POST submit flows)
+    submissionToken: {
+      type: String,
+      unique: true,
+      index: true,
+      sparse: true,
     },
     tokenExpiry: {
       type: Date,
@@ -127,6 +134,7 @@ employmentFormSchema.index({ employeeEmail: 1, organizationId: 1 });
 employmentFormSchema.methods.generateToken = function () {
   const unhashedToken = crypto.randomBytes(32).toString("hex");
   this.token = crypto.createHash("sha256").update(unhashedToken).digest("hex");
+  this.submissionToken = unhashedToken;
   this.tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   return unhashedToken;
 };
@@ -144,4 +152,3 @@ employmentFormSchema.statics.findByToken = async function (unhashedToken) {
 };
 
 export default mongoose.model("EmploymentForm", employmentFormSchema);
-

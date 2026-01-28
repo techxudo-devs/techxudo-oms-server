@@ -1,5 +1,6 @@
 import OnboardingService from "../services/onboarding/onboardingService.js";
 import EmailService from "../services/email/emailService.js";
+import Organization from "../models/Organization.js";
 
 /**
  * @desc    Create employee with onboarding (Admin only)
@@ -53,9 +54,17 @@ export const createEmployee = async (req, res) => {
       joiningDate
     }, req.user.id);
 
-    // Send offer letter email
+    // Send offer letter email (brand-aware)
     try {
-      await EmailService.sendOfferLetterEmail(result.onboarding.offerDetails, result.token);
+      let org = null;
+      try {
+        org = await Organization.findById(req.user.organizationId)
+          .select("companyName logo theme emailSettings")
+          .lean();
+      } catch (e) {
+        // ignore branding fetch failures, fall back to defaults
+      }
+      await EmailService.sendOfferLetterEmail(result.onboarding.offerDetails, result.token, org);
     } catch (emailError) {
       console.error("Failed to send offer letter email:", emailError);
       // Don't fail the request if email fails, but log it
@@ -331,7 +340,13 @@ export const resendOfferLetter = async (req, res) => {
       const onboarding = await import("../models/Onboarding.js").then(m => m.default);
       const onboardingRecord = await onboarding.findById(id);
       if (onboardingRecord) {
-        await EmailService.sendOfferLetterEmail(onboardingRecord.offerDetails, result.token);
+        let org = null;
+        try {
+          org = await Organization.findById(onboardingRecord.organizationId)
+            .select("companyName logo theme emailSettings")
+            .lean();
+        } catch (e) {}
+        await EmailService.sendOfferLetterEmail(onboardingRecord.offerDetails, result.token, org);
       }
     } catch (emailError) {
       console.error("Failed to send offer letter email:", emailError);
@@ -362,6 +377,23 @@ export const resendOfferLetter = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Ensure employment form link for an accepted onboarding
+ * @route   POST /api/onboarding/:token/employment-form
+ * @access  Public
+ */
+export const ensureEmploymentForm = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const result = await OnboardingService.ensureEmploymentFormToken(token);
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    const msg = error.message || "Server error while ensuring employment form";
+    const code = msg.includes("accepted") ? 400 : msg.includes("Invalid onboarding") ? 404 : 500;
+    return res.status(code).json({ success: false, error: msg });
+  }
+};
+
 export default {
   createEmployee,
   getOnboardingDetails,
@@ -370,5 +402,6 @@ export default {
   completeOnboarding,
   getAllOnboardingStatus,
   revokeOnboarding,
-  resendOfferLetter
+  resendOfferLetter,
+  ensureEmploymentForm,
 };
