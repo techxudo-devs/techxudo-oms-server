@@ -11,6 +11,7 @@ import LateArrivalEmail from "../../emails/LateArrivalEmail.js";
 import AbsentNotificationEmail from "../../emails/AbsentNotificationEmail.js";
 import EmploymentFormEmail from "../../emails/EmploymentFormEmail.js";
 import EmploymentFormRevisionEmail from "../../emails/EmploymentFormRevisionEmail.js";
+import EmploymentFormApprovedEmail from "../../emails/EmploymentFormApprovedEmail.js";
 import ContractEmail from "../../emails/ContractEmail.js";
 import CandidateAcknowledgementEmail from "../../emails/CandidateAcknowledgementEmail.js";
 import ScreeningInviteEmail from "../../emails/ScreeningInviteEmail.js";
@@ -898,6 +899,53 @@ ${company} Team
       };
     } catch (error) {
       console.error("Error sending employment form revision email:", error);
+      return { success: false };
+    }
+  }
+
+  async sendEmploymentFormApprovedEmail(employee, org = null, notes = "") {
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const portalUrl = `${frontendUrl}/login`;
+      const html = await render(
+        React.createElement(EmploymentFormApprovedEmail, {
+          employeeName: employee.fullName,
+          org,
+          portalUrl,
+          notes,
+        })
+      );
+
+      const company = (org && org.companyName) || "Our Company";
+      const subject = `Next steps from ${company} HR`;
+      const textLines = [
+        `Hi ${employee.fullName},`,
+        "",
+        "Your employment form has been approved by HR.",
+        "You can expect:",
+        "- An appointment link to confirm the role and start date.",
+        "- A contract for your review and e-signature.",
+        "- Credentials and onboarding instructions once the contract is signed.",
+        "",
+        `Portal: ${portalUrl}`,
+      ];
+      const text = textLines.join("\n");
+
+      await this.sendEmail({
+        to: employee.email,
+        subject,
+        html,
+        text,
+        org,
+      });
+
+      console.log(`📧 Employment form approval email sent to ${employee.email}`);
+      return {
+        success: true,
+        message: `Employment form approval email sent to ${employee.email}`,
+      };
+    } catch (error) {
+      console.error("Error sending employment form approval email:", error);
       return { success: false };
     }
   }

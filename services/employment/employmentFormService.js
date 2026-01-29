@@ -102,6 +102,7 @@ class EmploymentFormService {
     try {
       const updateData = {
         status,
+        reviewNotes: reviewNotes || undefined,
         reviewedBy: reviewerId,
         reviewedAt: new Date(),
       };
@@ -111,6 +112,31 @@ class EmploymentFormService {
         updateData,
         { new: true, runValidators: true }
       );
+
+      if (status === "approved") {
+        let org = null;
+        try {
+          org = await Organization.findById(updatedForm.organizationId)
+            .select("companyName logo theme emailSettings")
+            .lean();
+        } catch (error) {
+          console.warn("Approval email org lookup failed:", error?.message || error);
+        }
+
+        try {
+        await emailService.sendEmploymentFormApprovedEmail(
+          {
+            fullName:
+              updatedForm.personalInfo?.legalName || updatedForm.employeeName,
+            email: updatedForm.employeeEmail,
+          },
+          org,
+          reviewNotes,
+        );
+        } catch (error) {
+          console.warn("Approval email failed:", error?.message || error);
+        }
+      }
 
       return updatedForm;
     } catch (error) {
