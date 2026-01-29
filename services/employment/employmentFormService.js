@@ -119,6 +119,61 @@ class EmploymentFormService {
     }
   }
 
+  static async requestRevision(formId, { fields = [], notes = "" } = {}, reviewerId) {
+    try {
+      const revisionEntry = {
+        requestedFields: fields,
+        notes,
+        requestedBy: reviewerId,
+        requestedAt: new Date(),
+      };
+
+      const updatePayload = {
+        status: "needs_revision",
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+        $push: {
+          revisionRequests: revisionEntry,
+        },
+      };
+
+      const updatedForm = await EmploymentForm.findByIdAndUpdate(
+        formId,
+        updatePayload,
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedForm) {
+        throw new Error("Employment form not found to request revision");
+      }
+
+      let org = null;
+      try {
+        org = await Organization.findById(updatedForm.organizationId)
+          .select("companyName logo theme emailSettings")
+          .lean();
+      } catch (e) {}
+
+      await emailService.sendEmploymentFormRevisionEmail(
+        {
+          fullName:
+            updatedForm.personalInfo?.legalName || updatedForm.employeeName,
+          email: updatedForm.employeeEmail,
+        },
+        updatedForm.submissionToken,
+        org,
+        fields,
+        notes,
+      );
+
+      return updatedForm;
+    } catch (error) {
+      console.error("Service Error (requestRevision):", error);
+      throw new Error("Failed to request revisions for employment form.");
+    }
+  }
+
   static async submitEmploymentForm(token, employmentFormData) {
     try {
       // Clean and validate token
@@ -146,8 +201,11 @@ class EmploymentFormService {
 
       console.log("DEBUG: Found form with ID:", formToUpdate._id);
 
-      // Prevent resubmission if not in draft
-      if (formToUpdate.status && formToUpdate.status !== "draft") {
+      // Prevent resubmission unless the form was flagged for revision
+      if (
+        formToUpdate.status &&
+        !["draft", "needs_revision"].includes(formToUpdate.status)
+      ) {
         console.error(
           "Service Error: Form already submitted, ID:",
           formToUpdate._id

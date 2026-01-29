@@ -1,5 +1,8 @@
 import EmploymentFormService from "../services/employment/employmentFormService.js";
 import Organization from "../models/Organization.js";
+
+const escapeRegex = (value = "") =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /**
  * @desc    Create employment form (Admin only)
  * @route   POST /api/employment-forms
@@ -37,15 +40,33 @@ export const createEmploymentForm = async (req, res) => {
  */
 export const getEmploymentForms = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status = "", employeeEmail = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      status = "",
+      employeeEmail = "",
+      search = "",
+    } = req.query;
 
     // Build filter object
     const filter = { organizationId: req.user.organizationId };
     if (status) {
       filter.status = status;
     }
-    if (employeeEmail) {
-      filter.employeeEmail = { $regex: employeeEmail, $options: "i" };
+    const normalizedEmail = (employeeEmail || "").trim();
+    const searchTerm = (search || "").trim();
+
+    if (normalizedEmail) {
+      filter.employeeEmail = {
+        $regex: new RegExp(escapeRegex(normalizedEmail), "i"),
+      };
+    } else if (searchTerm) {
+      const regex = new RegExp(escapeRegex(searchTerm), "i");
+      filter.$or = [
+        { employeeEmail: regex },
+        { "personalInfo.legalName": regex },
+        { "contactInfo.phone": regex },
+      ];
     }
 
     const result = await EmploymentFormService.getEmploymentForms({
@@ -152,6 +173,29 @@ export const reviewEmploymentForm = async (req, res) => {
   }
 };
 
+export const requestEmploymentFormRevision = async (req, res) => {
+  try {
+    const { notes = "", fields = [] } = req.body;
+    const result = await EmploymentFormService.requestRevision(
+      req.params.id,
+      { notes, fields },
+      req.user._id,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Revision requested successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Request revision error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Server error while requesting revision",
+    });
+  }
+};
+
 /**
  * @desc    Get employment form by token (Public - for employee view)
  * @route   GET /api/employment-forms/view/:token
@@ -168,6 +212,18 @@ export const getEmploymentFormByToken = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: "Employment form not found",
+      });
+    }
+
+    if (
+      result.status &&
+      !["draft", "needs_revision"].includes(result.status)
+    ) {
+      return res.status(409).json({
+        success: false,
+        error:
+          "This employment form has already been submitted. HR is reviewing it and will be in touch shortly.",
+        status: result.status,
       });
     }
 

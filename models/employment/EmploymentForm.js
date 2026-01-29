@@ -109,7 +109,13 @@ const employmentFormSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "pending_review", "approved", "rejected"],
+      enum: [
+        "draft",
+        "pending_review",
+        "needs_revision",
+        "approved",
+        "rejected",
+      ],
       default: "draft",
       index: true,
     },
@@ -119,6 +125,21 @@ const employmentFormSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    reviewNotes: String,
+    revisionRequests: [
+      {
+        requestedFields: [String],
+        notes: String,
+        requestedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        requestedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     createdAt: Date,
     updatedAt: Date,

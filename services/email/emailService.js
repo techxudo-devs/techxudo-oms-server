@@ -10,6 +10,7 @@ import StatusUpdateEmail from "../../emails/StatusUpdateEmail.js";
 import LateArrivalEmail from "../../emails/LateArrivalEmail.js";
 import AbsentNotificationEmail from "../../emails/AbsentNotificationEmail.js";
 import EmploymentFormEmail from "../../emails/EmploymentFormEmail.js";
+import EmploymentFormRevisionEmail from "../../emails/EmploymentFormRevisionEmail.js";
 import ContractEmail from "../../emails/ContractEmail.js";
 import CandidateAcknowledgementEmail from "../../emails/CandidateAcknowledgementEmail.js";
 import ScreeningInviteEmail from "../../emails/ScreeningInviteEmail.js";
@@ -852,14 +853,52 @@ ${company} Team
         org,
       });
 
-      console.log(`📧 Employment form email sent to ${employee.email}`);
+    console.log(`📧 Employment form email sent to ${employee.email}`);
+    return {
+      success: true,
+      message: `Employment form email sent to ${employee.email}`,
+    };
+  } catch (error) {
+    console.error("Error sending employment form email:", error);
+    return { success: false };
+  }
+}
+
+  async sendEmploymentFormRevisionEmail(employee, token, org = null, fields = [], notes = "") {
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const formLink = `${frontendUrl}/employment/form/${token}`;
+      const html = await render(
+        React.createElement(EmploymentFormRevisionEmail, {
+          employeeName: employee.fullName,
+          formLink,
+          org,
+          requestedFields: fields,
+          notes,
+        })
+      );
+
+      const company = (org && org.companyName) || "Our Company";
+      const text = `Hi ${employee.fullName},\n\nOur HR team reviewed your employment form and needs revisions to the following sections: ${
+        fields.join(", ") || "the provided information"
+      }.\n\n${notes ? `Notes: ${notes}\n\n` : ""}Please update the form here: ${formLink}\n\nOnce completed, we will continue with the next steps in the hiring process.\n\nBest regards,\n${company} HR Team`;
+
+      await this.sendEmail({
+        to: employee.email,
+        subject: `Action required: Update your employment form - ${company}`,
+        html,
+        text,
+        org,
+      });
+
+      console.log(`📧 Employment form revision email sent to ${employee.email}`);
       return {
         success: true,
-        message: `Employment form email sent to ${employee.email}`,
+        message: `Employment form revision email sent to ${employee.email}`,
       };
     } catch (error) {
-      console.error("Error sending employment form email:", error);
-      throw error;
+      console.error("Error sending employment form revision email:", error);
+      return { success: false };
     }
   }
 

@@ -34,6 +34,13 @@ router.put(
   employmentFormController.reviewEmploymentForm
 );
 
+router.put(
+  "/:id/request-revision",
+  authMiddleware,
+  isAdmin,
+  employmentFormController.requestEmploymentFormRevision
+);
+
 // Public routes (to be used with tokens)
 router.post(
   "/submit/:token",
