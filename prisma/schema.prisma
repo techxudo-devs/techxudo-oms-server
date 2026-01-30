@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id          String       @id @default(uuid()) @db.Uuid
+  companyName String
+  slug        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  departments Department[]
+  employees   Employee[]
+  projects    Project[]
+  attendance  Attendance[]
+  payrolls    Payroll[]
+}
+
+model Department {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @db.Uuid
+  name             String
+  description      String?
+  headOfDepartment String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees        Employee[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model Employee {
+  id                        String            @id @default(uuid()) @db.Uuid
+  fullName                  String
+  email                     String            @unique
+  passwordHash              String
+  role                      String            @default("employee")
+  employeeId                String?
+  designation               String?
+  phone                     String?
+  joiningDate               DateTime?
+  salary                    Decimal?          @db.Decimal(12, 2)
+  isActive                  Boolean           @default(true)
+  isEmailVerified           Boolean           @default(false)
+  organizationId            String            @db.Uuid
+  departmentId              String?           @db.Uuid
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  organization              Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department                Department?       @relation(fields: [departmentId], references: [id])
+  attendance                Attendance[]
+  attendanceMarked          Attendance[]      @relation("AttendanceMarkedBy")
+  payrolls                  Payroll[]
+  employeeProjects          EmployeeProject[]
+  payrollsCreated           Payroll[]         @relation("PayrollCreatedBy")
+  payrollsUpdated           Payroll[]         @relation("PayrollUpdatedBy")
+  payrollsAcknowledged      Payroll[]         @relation("PayrollAcknowledgedBy")
+  payrollsLocked            Payroll[]         @relation("PayrollLockedBy")
+  payrollsIncrementApproved Payroll[]         @relation("PayrollIncrementApprovedBy")
+
+  @@unique([organizationId, email])
+  @@index([organizationId, role])
+  @@index([organizationId, isActive])
+  @@index([organizationId, departmentId])
+}
+
+model Attendance {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  organizationId String       @db.Uuid
+  date           DateTime
+  checkIn        Json?
+  checkOut       Json?
+  hoursWorked    Float        @default(0)
+  overtimeHours  Float        @default(0)
+  status         String       @default("present")
+  workType       String       @default("office")
+  lateArrival    Json?
+  earlyDeparture Json?
+  isManualEntry  Boolean      @default(false)
+  markedById     String?      @db.Uuid
+  adminNotes     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  employee       Employee     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  markedBy       Employee?    @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, organizationId])
+  @@index([organizationId, userId])
+  @@index([organizationId, date])
+  @@index([organizationId, status])
+  @@index([status, createdAt])
+  @@index([date])
+}
+
+model Payroll {
+  id                         String             @id @default(uuid()) @db.Uuid
+  userId                     String             @db.Uuid
+  organizationId             String             @db.Uuid
+  month                      Int
+  year                       Int
+  baseSalary                 Decimal            @db.Decimal(12, 2)
+  incrementPreviousSalary    Decimal?           @db.Decimal(12, 2)
+  incrementNewSalary         Decimal?           @db.Decimal(12, 2)
+  incrementAmount            Decimal?           @db.Decimal(12, 2)
+  incrementPercentage        Decimal?           @db.Decimal(6, 2)
+  incrementEffectiveDate     DateTime?
+  incrementReason            String?
+  incrementApprovedById      String?            @db.Uuid
+  attendanceTotalWorkingDays Int                @default(0)
+  attendancePresentDays      Int                @default(0)
+  attendanceAbsentDays       Int                @default(0)
+  attendanceLateDays         Int                @default(0)
+  attendanceHalfDays         Int                @default(0)
+  attendanceOvertimeHours    Decimal            @default(0) @db.Decimal(12, 2)
+  attendanceOvertimeAmount   Decimal            @default(0) @db.Decimal(12, 2)
+  totalAllowances            Decimal            @default(0) @db.Decimal(12, 2)
+  totalBonuses               Decimal            @default(0) @db.Decimal(12, 2)
+  totalDeductions            Decimal            @default(0) @db.Decimal(12, 2)
+  grossSalary                Decimal            @default(0) @db.Decimal(12, 2)
+  netSalary                  Decimal            @default(0) @db.Decimal(12, 2)
+  paymentStatus              String             @default("pending")
+  paymentDate                DateTime?
+  paymentMethod              String             @default("bank-transfer")
+  transactionId              String?
+  notes                      String?
+  adminNotes                 String?
+  acknowledged               Boolean            @default(false)
+  acknowledgedAt             DateTime?
+  acknowledgedById           String?            @db.Uuid
+  createdById                String?            @db.Uuid
+  updatedById                String?            @db.Uuid
+  isLocked                   Boolean            @default(false)
+  lockedAt                   DateTime?
+  lockedById                 String?            @db.Uuid
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+  employee                   Employee           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization               Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  incrementApprovedBy        Employee?          @relation("PayrollIncrementApprovedBy", fields: [incrementApprovedById], references: [id])
+  acknowledgedBy             Employee?          @relation("PayrollAcknowledgedBy", fields: [acknowledgedById], references: [id])
+  createdBy                  Employee?          @relation("PayrollCreatedBy", fields: [createdById], references: [id])
+  updatedBy                  Employee?          @relation("PayrollUpdatedBy", fields: [updatedById], references: [id])
+  lockedBy                   Employee?          @relation("PayrollLockedBy", fields: [lockedById], references: [id])
+  allowances                 PayrollAllowance[]
+  bonuses                    PayrollBonus[]
+  deductions                 PayrollDeduction[]
+
+  @@unique([userId, month, year])
+  @@index([paymentStatus, year, month])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model PayrollAllowance {
+  id          String  @id @default(uuid()) @db.Uuid
+  payrollId   String  @db.Uuid
+  type        String
+  amount      Decimal @db.Decimal(12, 2)
+  description String?
+  payroll     Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  @@index([payrollId])
+}
+
+model PayrollBonus {
+  id          String    @id @default(uuid()) @db.Uuid
+  payrollId   String    @db.Uuid
+  type        String
+  amount      Decimal   @db.Decimal(12, 2)
+  description String?
+  date        DateTime?
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  @@index([payrollId])
+}
+
+model PayrollDeduction {
+  id          String  @id @default(uuid()) @db.Uuid
+  payrollId   String  @db.Uuid
+  type        String
+  amount      Decimal @db.Decimal(12, 2)
+  description String?
+  payroll     Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  @@index([payrollId])
+}
+
+model Project {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @db.Uuid
+  name             String
+  description      String?
+  status           String?           @default("active")
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employeeProjects EmployeeProject[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model EmployeeProject {
+  employeeId String   @db.Uuid
+  projectId  String   @db.Uuid
+  assignedAt DateTime @default(now())
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, projectId])
+  @@index([projectId])
+}

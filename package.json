@@ -17,6 +17,9 @@
   "author": "Techxudo",
   "license": "MIT",
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^7.3.0",
+    "@prisma/client": "^7.3.0",
     "@react-email/components": "^1.0.1",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
@@ -40,6 +43,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
